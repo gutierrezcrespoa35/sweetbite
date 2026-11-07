@@ -362,6 +362,15 @@ $resultado_catalogo = $conexion->query($sql_catalogo);
             transform: translateY(-3px);
             box-shadow: 0 7px 16px rgba(233, 30, 99, 0.10);
         }
+        .galleta-foto {
+            display: block;
+            width: calc(100% + 40px);
+            height: 190px;
+            margin: -20px -20px 18px;
+            object-fit: cover;
+            border-radius: 18px 18px 0 0;
+            background: #f8bbd0;
+        }
         .card-badge {
             display: inline-block;
             background-color: #f8bbd0;
@@ -519,8 +528,8 @@ $resultado_catalogo = $conexion->query($sql_catalogo);
         <div class="titulo-contenido">
             <h2>Catálogo de Galletas 📜🍪</h2>
             <div class="botones-superiores">
-                <a href="carritos.php" class="btn btn-carrito">
-                    🛒 Ver carrito
+                <a href="detalle_carrito.php" class="btn btn-carrito">
+                    🛒 Ver mi carrito
                 </a>
                 <a href="detalle_carrito.php" class="btn btn-detalle">
                     📋 Ver detalle
@@ -536,9 +545,9 @@ $resultado_catalogo = $conexion->query($sql_catalogo);
                 ) ?>
                 <?php if ($tipo_mensaje === 'success'): ?>
                     <div style="margin-top:10px;">
-                        <a href="carritos.php"
+                        <a href="detalle_carrito.php"
                            style="color:#2e7d32;font-weight:bold;">
-                            Ir al carrito →
+                            Ver mi carrito →
                         </a>
                     </div>
                 <?php endif; ?>
@@ -557,8 +566,32 @@ $resultado_catalogo = $conexion->query($sql_catalogo);
                         ? "Stock: {$stock_num} unid."
                         : "Agotado (0)";
                     ?>
+                    <?php
+                    $fotos_galletas = [
+                        'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=900&q=85',
+                        'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=900&q=85',
+                        'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=900&q=85',
+                        'https://images.unsplash.com/photo-1590080877777-9a7c0d9f9f8a?auto=format&fit=crop&w=900&q=85',
+                        'https://images.unsplash.com/photo-1595535373192-fc4e7d6b2a5f?auto=format&fit=crop&w=900&q=85',
+                    ];
+                    $foto_galleta = $fotos_galletas[$id_galleta % count($fotos_galletas)];
+                    if (stripos($galleta['producto'], 'muddy bites') !== false) {
+                        $foto_galleta = 'https://saltandbaker.com/wp-content/uploads/2022/04/Crumbl-Muddy-Buddy-Cookies-12.jpg';
+                    } elseif (stripos($galleta['producto'], 'white caramel') !== false) {
+                        $foto_galleta = 'https://www.thebakingchocolatess.com/wp-content/uploads/2021/10/IMG_47311.jpg';
+                    } elseif (stripos($galleta['producto'], 'dark passion') !== false) {
+                        $foto_galleta = 'https://www.pineappleandcoconut.com/wp-content/uploads/2021/02/Dark-Chocolate-Passionfruit-Cookies4092.jpg';
+                    } elseif (stripos($galleta['producto'], 'white crunch') !== false) {
+                        $foto_galleta = 'https://crumbl.video/f139f74d-cf28-4b4f-9f11-307b19cb274a_OatmealMallowSandwichCookie_FlyingAerial_TECH.png';
+                    }
+                    ?>
                     <div class="card-galleta">
                         <div>
+                            <img class="galleta-foto"
+                                 src="<?= htmlspecialchars($foto_galleta, ENT_QUOTES, 'UTF-8') ?>"
+                                 alt="Galletas <?= htmlspecialchars($galleta['producto'], ENT_QUOTES, 'UTF-8') ?>"
+                                 onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=900&q=85'"
+                                 loading="lazy">
                             <span class="card-badge">
                                 <?= htmlspecialchars(
                                     $galleta['categoria'] ?? 'Sin categoría',

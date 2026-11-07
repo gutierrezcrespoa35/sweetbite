@@ -49,7 +49,7 @@ $rol = str_replace(
     $rol
 );
 if (strpos($rol, "cliente") !== false) {
-    header("Location: /sweetbite/catalogo_galletas.php");
+    header("Location: tienda.php");
     exit;
 }
 header("Location: /sweetbite/index.php");

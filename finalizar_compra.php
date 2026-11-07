@@ -25,7 +25,7 @@ if ($id_usuario <= 0) {
 $error = "";
 $exito = "";
 
-// Recibir los productos seleccionados desde carritos.php.
+// Compatibilidad con el flujo anterior de selección de productos.
 if (
     $_SERVER["REQUEST_METHOD"] === "POST" &&
     ($_POST["accion"] ?? "") === "continuar"
@@ -34,7 +34,7 @@ if (
     $cantidades = $_POST["cantidad"] ?? [];
 
     if (!is_array($seleccionados) || empty($seleccionados)) {
-        header("Location: carritos.php");
+        header("Location: detalle_carrito.php");
         exit();
     }
 
@@ -69,13 +69,36 @@ if (
     }
 }
 
+// Al venir desde el detalle del carrito, preparar el pedido con todos
+// los productos y cantidades que ya tiene el cliente.
+if ($_SERVER["REQUEST_METHOD"] === "GET") {
+    $seleccion_carrito = [];
+    $stmt_carrito = $conexion->prepare(
+        "SELECT dc.id_detalle_carrito, dc.cantidad
+         FROM carritos c
+         INNER JOIN detalle_carrito dc ON dc.id_carrito = c.id_carrito
+         WHERE c.id_usuario = ? AND c.estado = 'activo'
+         ORDER BY dc.id_detalle_carrito ASC"
+    );
+    $stmt_carrito->bind_param("i", $id_usuario);
+    $stmt_carrito->execute();
+    $resultado_carrito = $stmt_carrito->get_result();
+
+    while ($fila = $resultado_carrito->fetch_assoc()) {
+        $seleccion_carrito[(int)$fila["id_detalle_carrito"]] =
+            (int)$fila["cantidad"];
+    }
+
+    $stmt_carrito->close();
+    $_SESSION["compra_seleccionada"] = $seleccion_carrito;
+}
+
 // Obtener selección guardada.
 $seleccion = $_SESSION["compra_seleccionada"] ?? [];
 
 if (!is_array($seleccion) || empty($seleccion)) {
     if ($error === "") {
-        header("Location: carritos.php");
-        exit();
+        $error = "Tu carrito está vacío. Agrega algunas galletas antes de hacer el pedido.";
     }
 }
 
@@ -644,7 +667,7 @@ footer {
     <nav>
         <a href="tienda.php"><span>🏠</span>Inicio</a>
         <a href="catalogo_galletas.php"><span>🍪</span>Catálogo</a>
-        <a href="carritos.php"><span>🛒</span>Mi carrito</a>
+        <a href="detalle_carrito.php"><span>🛒</span>Mi carrito</a>
         <a href="mis_pedidos.php" class="activo"><span>📦</span>Mis pedidos</a>
         <a href="pagos.php"><span>💳</span>Pagos</a>
         <a href="pedidos_especiales.php"><span>🎂</span>Pedidos especiales</a>
@@ -714,7 +737,7 @@ footer {
                         Confirmar pedido ♡
                     </button>
 
-                    <a href="carritos.php" class="btn btn-secundario">
+                    <a href="detalle_carrito.php" class="btn btn-secundario">
                         ← Volver al carrito
                     </a>
                 </div>
@@ -724,7 +747,7 @@ footer {
         <section class="panel">
             <p>No hay productos para mostrar. Regresa al carrito y selecciona las galletas que deseas comprar.</p>
             <div class="acciones" style="margin-top:20px;">
-                <a href="carritos.php" class="btn btn-principal">Volver a mi carrito</a>
+                <a href="detalle_carrito.php" class="btn btn-principal">Volver a mi carrito</a>
             </div>
         </section>
     <?php endif; ?>

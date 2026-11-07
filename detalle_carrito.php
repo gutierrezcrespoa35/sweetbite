@@ -8,10 +8,12 @@ if (!isset($_SESSION['usuario'])) {
 $nombre_usuario = $_SESSION['nombre_completo'] ?? $_SESSION['usuario'];
 $id_usuario = (int)($_SESSION['id_usuario'] ?? 1);
 $mensaje = "";
+$tipo_mensaje = $_SESSION["tipo_mensaje_carrito"] ?? "success";
 // Recuperar mensaje de una operación anterior
 if (isset($_SESSION['mensaje_carrito'])) {
     $mensaje = $_SESSION['mensaje_carrito'];
     unset($_SESSION['mensaje_carrito']);
+    unset($_SESSION["tipo_mensaje_carrito"]);
 }
 // Obtener el carrito activo del usuario
 $stmt_carrito = $conexion->prepare("
@@ -41,6 +43,38 @@ if ($res_carrito->num_rows > 0) {
 }
 if ($stmt_carrito !== null) {
     $stmt_carrito->close();
+}
+// Eliminar un producto únicamente del carrito activo de esta cuenta.
+if (
+    $_SERVER["REQUEST_METHOD"] === "POST" &&
+    ($_POST["accion"] ?? "") === "eliminar_producto"
+) {
+    $id_detalle_eliminar = filter_var(
+        $_POST["id_detalle_carrito"] ?? null,
+        FILTER_VALIDATE_INT
+    );
+
+    if (!$id_detalle_eliminar || $id_detalle_eliminar < 1) {
+        $_SESSION["mensaje_carrito"] = "No se pudo identificar el producto.";
+    } else {
+        $stmt_eliminar = $conexion->prepare(
+            "DELETE FROM detalle_carrito
+             WHERE id_detalle_carrito = ? AND id_carrito = ?"
+        );
+        $stmt_eliminar->bind_param(
+            "ii",
+            $id_detalle_eliminar,
+            $id_carrito
+        );
+        $stmt_eliminar->execute();
+        $_SESSION["mensaje_carrito"] = $stmt_eliminar->affected_rows > 0
+            ? "El producto se eliminó del carrito."
+            : "Ese producto ya no está en tu carrito.";
+        $stmt_eliminar->close();
+    }
+
+    header("Location: detalle_carrito.php");
+    exit();
 }
 // Consultar los productos del carrito activo
 $stmt_detalle = $conexion->prepare("
@@ -239,6 +273,30 @@ $stmt_detalle->close();
             font-weight: 600;
             color: #880e4f;
         }
+        .producto-con-eliminar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-width: 170px;
+        }
+        .btn-eliminar-producto {
+            flex: 0 0 32px;
+            width: 32px;
+            height: 32px;
+            border: 0;
+            border-radius: 50%;
+            background: #ffebee;
+            color: #c62828;
+            font-size: 22px;
+            font-weight: bold;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .btn-eliminar-producto:hover {
+            background: #c62828;
+            color: #fff;
+        }
         .stock-ok {
             display: inline-block;
             background-color: #e8f5e9;
@@ -415,7 +473,11 @@ $stmt_detalle->close();
         </ul>
     </aside>
     <main class="content">
-        <?= $mensaje ?>
+        <?php if ($mensaje !== ""): ?>
+            <div class="alert <?= $tipo_mensaje === 'error' ? 'error' : 'success' ?>">
+                <?= htmlspecialchars($mensaje, ENT_QUOTES, "UTF-8") ?>
+            </div>
+        <?php endif; ?>
         <div class="card-box">
             <div class="encabezado-card">
                 <h2>Detalle del carrito 🛒</h2>
@@ -445,12 +507,26 @@ $stmt_detalle->close();
                         <?php foreach ($productos as $d): ?>
                             <tr>
                                 <td><?= $numero++ ?></td>
-                                <td class="nombre-producto">
-                                    <?= htmlspecialchars(
-                                        $d['nombre'],
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>
+                                <td>
+                                    <div class="producto-con-eliminar">
+                                        <span class="nombre-producto">
+                                            <?= htmlspecialchars(
+                                                $d['nombre'],
+                                                ENT_QUOTES,
+                                                'UTF-8'
+                                            ) ?>
+                                        </span>
+                                        <form method="POST" action="detalle_carrito.php">
+                                            <input type="hidden" name="accion" value="eliminar_producto">
+                                            <input type="hidden" name="id_detalle_carrito" value="<?= (int)$d['id_detalle_carrito'] ?>">
+                                            <button
+                                                type="submit"
+                                                class="btn-eliminar-producto"
+                                                aria-label="Eliminar <?= htmlspecialchars($d['nombre'], ENT_QUOTES, 'UTF-8') ?> del carrito"
+                                                title="Eliminar del carrito"
+                                            >×</button>
+                                        </form>
+                                    </div>
                                 </td>
                                 <td><?= (int)$d['cantidad'] ?></td>
                                 <td>
@@ -509,12 +585,16 @@ $stmt_detalle->close();
                 </div>
             <?php endif; ?>
             <div class="acciones">
-                <a href="catalogo_galletas.php" class="btn btn-seguir">
+                <a href="/sweetbite/catalogo_galletas.php" class="btn btn-seguir">
                     📜 Seguir comprando
                 </a>
-                <a href="carritos.php" class="btn btn-secondary">
-                    🛒 Ir al carrito
-                </a>
+                <?php if (count($productos) > 0): ?>
+                    <form method="POST" action="/sweetbite/crear_pedido.php">
+                        <button type="submit" class="btn btn-secondary">
+                            🛍️ Hacer pedido
+                        </button>
+                    </form>
+                <?php endif; ?>
             </div>
         </div>
     </main>
